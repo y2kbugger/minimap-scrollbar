@@ -1,7 +1,7 @@
 const elementMap = {
     h1: '--minimap-heading',
-    h2: '--minimap-heading',
-    h3: '--minimap-heading',
+    h2: '--minimap-heading2',
+    h3: '--minimap-heading3',
     h4: '--minimap-heading',
     h5: '--minimap-heading',
     h6: '--minimap-heading',
@@ -19,37 +19,46 @@ export class Minimap extends HTMLElement {
         this.options = elementMap;
         this.canvas = document.createElement("canvas");
         this.styleElement = document.createElement("style");
-        this.staticStyleElement = document.createElement("style");
-        this.root = this.parentElement;
-        // this.root = document.querySelector("body")!;
+        this.root = document.createElement('div');
     }
     connectedCallback() {
-        // Add all child elements on create
         const shadow = this.attachShadow({ mode: "open" });
-        shadow.appendChild(this.styleElement);
+        this.root.classList.add('scrollable-content');
+        // Move the child to the scroll root
+        while (this.firstChild)
+            this.root.appendChild(this.firstChild);
+        shadow.appendChild(this.root);
         shadow.appendChild(this.canvas);
-        // Canvas should be as large as we let it
-        const canvas = `canvas { width: 100%; height: 100%; }`;
-        // Let the user know they can move about on hover
-        const hover = `canvas:hover { cursor: move; }`;
-        // Add to the right of the page, outside of the flow
-        const host = `
-            :host {
-                position: fixed;
-                top: 0px;
-                right: 100px;
-                width: 30px;
-                bottom: 0px;
-            }`;
-        this.styleElement.textContent = `
-            ${host}
-            ${hover}
-            ${canvas}
-            `;
-        // Give 50ms for the page draw to settle
-        setTimeout(() => {
+        const style = document.createElement('style');
+        style.textContent = `
+        :host {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .scrollable-content {
+            flex: 1;
+            height: 100%;
+            overflow-y: scroll;
+            scrollbar-width: none;
+            ::-webkit-scrollbar { display: none; }
+        }
+        canvas {
+            width: 15px;
+            height: 100%;
+            &:hover {
+                cursor: pointer;
+            }
+            &:active:hover{
+                cursor: grabbing;
+            }
+        }
+        `;
+        shadow.appendChild(style);
+        // Redraw the canvas when the page is settled
+        requestAnimationFrame(() => {
             this.redraw();
-        }, 50);
+        });
     }
     get root() {
         return this._root;
@@ -60,7 +69,7 @@ export class Minimap extends HTMLElement {
         const onScroll = () => {
             this.redraw();
         };
-        document.addEventListener("scroll", onScroll);
+        root.addEventListener("scroll", onScroll);
         const onMove = (e) => {
             // We are controlling the mouse
             e.preventDefault();
@@ -77,6 +86,8 @@ export class Minimap extends HTMLElement {
             this.root.scrollTo({
                 top: pointConvertedToPage
             });
+            // Redraw the canvas
+            this.redraw();
         };
         // Remove control of scrolling when the mouse is up
         const onMouseUp = (e) => {
@@ -86,13 +97,15 @@ export class Minimap extends HTMLElement {
             this.root.addEventListener("scroll", onScroll);
         };
         // Control scrolling with the mouse when the mouse is down over the canvas
-        this.canvas.addEventListener('mousedown', () => {
+        this.canvas.addEventListener('mousedown', (e) => {
+            this.root.removeEventListener("scroll", onScroll);
+            onMove(e); // scroll on click
             window.addEventListener('mousemove', onMove);
             window.addEventListener('mouseup', onMouseUp);
-            this.root.removeEventListener("scroll", onScroll);
         });
     }
     redraw() {
+        console.log("Redrawing");
         const context = this.canvas.getContext('2d');
         if (!context)
             throw new Error("Missing canvas context");
@@ -117,21 +130,15 @@ export class Minimap extends HTMLElement {
                 // Style the element based on the configured css variable values
                 context.fillStyle = getComputedStyle(this).getPropertyValue(colour);
                 // Add the element to the calculated position on the canvas
-                const margin = 20;
-                context.fillRect(margin + elementRect.x - rootRect.x, elementRect.y - rootRect.y, elementRect.width - 2 * margin, elementRect.height);
+                const margin_px = 2;
+                const margin = margin_px * this.root.scrollWidth / canvasBounds.width;
+                context.fillRect(margin + elementRect.x - rootRect.x, elementRect.y - rootRect.y + this.root.scrollTop, elementRect.width - 2 * margin, elementRect.height);
             }
         }
         // see through
-        context.fillStyle = "rgba(0, 0, 0, 0.6)";
+        context.fillStyle = "rgba(0, 0, 0, 0.3)";
         // Current page view
-        // context.fillRect(
-        //     this.scrollLeft,
-        //     this.root.scrollTop,
-        //     this.root.clientWidth,
-        //     this.root.clientHeight
-        // )
-        // // the above forces you to make root element short, use viewport instead.
-        context.fillRect(0, window.scrollY, window.innerWidth, window.innerHeight);
+        context.fillRect(this.scrollLeft, this.root.scrollTop, this.root.clientWidth, this.root.clientHeight);
     }
 }
 customElements.define("mini-map", Minimap);

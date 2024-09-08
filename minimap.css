@@ -1,11 +1,17 @@
 :root {
   --minimap-heading: blue;
-  --minimap-text: red;
+  --minimap-heading2: rgb(99, 14, 156);
+  --minimap-heading3: rgb(255, 55, 0);
+  --minimap-text: rgba(97, 164, 75, 0.55);
 }
 
-article {
-  width: 200px;
-  padding-right: 30px;
+
+
+mini-map {
+  width: 300px;
+  height: 440px;
   margin-right: auto;
   margin-left: auto;
+  border: 1px solid rgb(151, 181, 176);
+  padding: 4px;
 }
