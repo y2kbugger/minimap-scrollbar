@@ -1,0 +1,11 @@
+:root {
+  --minimap-heading: blue;
+  --minimap-text: red;
+}
+
+article {
+  width: 200px;
+  padding-right: 30px;
+  margin-right: auto;
+  margin-left: auto;
+}
